@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Gnoke GeoCompass</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <link rel="icon"             type="image/png" href="global.png" />
+  <link rel="apple-touch-icon" href="global.png" />
+  <link rel="manifest"         href="manifest.json" />
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #f7f2ec;
+      --text:         #1c140e;
+      --muted:        #a09080;
+      --accent:       #1b4d6e;
+      --border:       #ede4d8;
+      --surface:      #ffffff;
+
+      --font-sans:    'DM Sans', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+      --font-display: 'Playfair Display', serif;
+    }
+
+    html, body {
+      width: 100%; height: 100dvh;
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .bg-layer {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 70% 80%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse at 15% 20%, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 50%);
+    }
+
+    .page {
+      position: relative; z-index: 1;
+      width: 100%; height: 100dvh;
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: 48px 28px 40px;
+    }
+
+    .version {
+      position: absolute; top: 50px; right: 28px;
+      font-family: var(--font-mono);
+      font-size: 0.62rem; letter-spacing: 0.08em; color: var(--muted);
+      opacity: 0; animation: up 0.5s ease 0.05s forwards;
+    }
+
+    .top {
+      display: flex; flex-direction: column; gap: 4px;
+      opacity: 0; animation: up 0.5s ease 0.1s forwards;
+    }
+    .gnoke-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem; letter-spacing: 0.22em;
+      text-transform: uppercase; color: var(--accent);
+    }
+    .app-name {
+      font-family: var(--font-display);
+      font-size: 2.6rem; font-weight: 700;
+      letter-spacing: -0.03em; line-height: 1; color: var(--text);
+    }
+
+    .mid {
+      display: flex; flex-direction: column; gap: 28px;
+      opacity: 0; animation: up 0.5s ease 0.25s forwards;
+    }
+    .desc {
+      font-size: 1rem; font-weight: 300;
+      color: var(--muted); line-height: 1.65; max-width: 320px;
+    }
+    .desc strong { color: var(--text); font-weight: 600; }
+
+    .pillars { display: flex; gap: 8px; }
+    .pillar {
+      flex: 1; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 10px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .pillar-icon  { font-size: 1.1rem; line-height: 1; }
+    .pillar-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted);
+    }
+
+    .bottom {
+      display: flex; flex-direction: column; gap: 14px;
+      opacity: 0; animation: up 0.5s ease 0.4s forwards;
+    }
+
+    .enter-btn {
+      display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+      width: 100%; padding: 16px;
+      background: var(--accent); color: #fff;
+      font-family: var(--font-sans);
+      font-size: 0.92rem; font-weight: 600;
+      border: none; border-radius: 10px;
+      cursor: pointer; text-decoration: none;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .enter-btn:active { opacity: 0.88; transform: scale(0.98); }
+    .arrow { transition: transform 0.2s; display: inline-block; }
+    .enter-btn:hover .arrow { transform: translateX(4px); }
+
+    .skip-row {
+      display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+    }
+    .skip-row input {
+      width: 15px; height: 15px;
+      accent-color: var(--accent); cursor: pointer;
+    }
+    .skip-row label {
+      font-family: var(--font-mono);
+      font-size: 0.62rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted);
+      cursor: pointer; user-select: none;
+    }
+
+    body.out { animation: fadeOut 0.28s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
+    @keyframes up {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+<span class="version">v1.0</span>
+
+<div class="page">
+
+  <div class="top">
+    <span class="gnoke-label">Gnoke</span>
+    <span class="app-name">GeoCompass</span>
+  </div>
+
+  <div class="mid">
+    <p class="desc">
+      A GPS compass that points you toward any destination on Earth.
+      Built for <strong>explorers, hikers, and field workers.</strong>
+      No server. No account.
+    </p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <span class="pillar-icon">🧭</span>
+        <span class="pillar-label">Compass</span>
+      </div>
+      <div class="pillar">
+        <span class="pillar-icon">📍</span>
+        <span class="pillar-label">Navigate</span>
+      </div>
+      <div class="pillar">
+        <span class="pillar-icon">🔍</span>
+        <span class="pillar-label">Search</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <a class="enter-btn" href="main/" onclick="go(event)">
+      Open GeoCompass <span class="arrow">→</span>
+    </a>
+    <div class="skip-row">
+      <input type="checkbox" id="skip" />
+      <label for="skip">Don't show again</label>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const KEY = 'gnoke_geocompass_skip_intro';
+
+  if (localStorage.getItem(KEY) === '1') {
+    window.location.replace('main/');
+  }
+
+  function go(e) {
+    e.preventDefault();
+    if (document.getElementById('skip').checked) {
+      localStorage.setItem(KEY, '1');
+    }
+    document.body.classList.add('out');
+    setTimeout(() => window.location.href = 'main/', 280);
+  }
+</script>
+</body>
+</html>

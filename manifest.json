@@ -1,0 +1,22 @@
+{
+  "name": "Gnoke GeoCompass",
+  "short_name": "GeoCompass",
+  "description": "GPS compass with real-time bearing, distance, and city search. Portable. Private. Persistent.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f2ec",
+  "theme_color": "#1b4d6e",
+  "icons": [
+    {
+      "src": "global.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "global.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
