@@ -1,1 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Gnoke GeoCompass</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet"       href="../styles.css" />
+  <link rel="icon"             type="image/png" href="../global.png" />
+  <link rel="apple-touch-icon" href="../global.png" />
+  <link rel="manifest"         href="../manifest.json" />
+
+  <!-- Anti-FOUC: apply saved theme before first paint -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('gnoke_geocompass_theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js');
+    }
+  </script>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     TOPBAR
+     ════════════════════════════════════════ -->
+<div id="topbar">
+
+  <button id="hamburger" title="Menu" onclick="Drawer.open()">&#9776;</button>
+
+  <div id="brand">
+    <span id="brand-gnoke">Gnoke</span>
+    <span id="brand-app">GeoCompass</span>
+  </div>
+
+  <!-- Live heading: updated by geo-compass.js animation loop -->
+  <span id="context-info"></span>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="menu-group" id="menu-group">
+
+    <div class="menu">
+      <button class="menu-btn">Navigate</button>
+      <div class="menu-content">
+        <button onclick="loadPage('compass-page')">🧭 Compass</button>
+        <button onclick="loadPage('navigate-page')">📍 Set Destination</button>
+        <button onclick="loadPage('search-page')">🔍 Search City</button>
+      </div>
+    </div>
+
+    <div class="menu">
+      <button class="menu-btn">Speed</button>
+      <div class="menu-content">
+        <button onclick="loadPage('speed-page')">🚗 Speedometer</button>
+      </div>
+    </div>
+
+    <div class="menu">
+      <button class="menu-btn">About</button>
+      <div class="menu-content">
+        <button onclick="loadPage('about-page')">About GeoCompass</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="topbar-right">
+    <span id="status-chip">saved</span>
+    <button class="icon-btn" id="theme-toggle" title="Toggle theme">🌙</button>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════════════
+     PAGE CONTAINER
+     ════════════════════════════════════════ -->
+<main class="pages">
+
+
+  <!-- ── COMPASS PAGE ─────────────────────────────────────────── -->
+  <section id="compass-page" class="page active">
+    <div class="page-content">
+
+      <div class="page-header">
+        <div>
+          <h1>Compass</h1>
+          <p class="sub">Real-time GPS bearing and heading</p>
+        </div>
+        <button class="btn btn-ghost" onclick="loadPage('navigate-page')">📍 Set Destination</button>
+      </div>
+
+      <div class="compass-layout">
+
+        <!-- SVG Compass (populated by geo-compass.js init) -->
+        <div class="compass-wrap">
+          <div class="top-pip"></div>
+          <div id="compass-container" style="width:100%;height:100%;"></div>
+        </div>
+
+        <!-- Heading readout -->
+        <div class="heading-readout">
+          <div id="compass-heading-deg"      class="heading-deg">0°</div>
+          <div id="compass-heading-cardinal" class="heading-cardinal">N</div>
+        </div>
+
+        <!-- Destination readout (shows bearing + distance when set) -->
+        <div class="dest-readout">
+          <span id="compass-dest-icon" class="dest-arrow-icon">🧭</span>
+          <div class="dest-readout-text">
+            <div id="compass-dest-label" class="dest-label">Destination</div>
+            <div id="compass-dest-value" class="dest-value">No destination set</div>
+          </div>
+        </div>
+
+        <!-- GPS status strip -->
+        <div class="gps-strip">
+          <div id="gps-dot" class="gps-dot"></div>
+          <span id="gps-text">Initializing GPS…</span>
+        </div>
+
+        <!-- Enable compass button -->
+        <button id="btn-enable-compass" class="btn-enable">
+          🧭 Enable Compass
+        </button>
+
+        <!-- Compass status line -->
+        <p id="compass-status"
+           style="font-family:var(--font-mono);font-size:.65rem;letter-spacing:.06em;color:var(--muted);text-align:center;min-height:16px;">
+          Tap Enable to start device orientation tracking
+        </p>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── NAVIGATE PAGE ────────────────────────────────────────── -->
+  <section id="navigate-page" class="page">
+    <div class="page-content">
+
+      <div class="page-header">
+        <div>
+          <h1>Navigate</h1>
+          <p class="sub">Set a destination by coordinates or preset</p>
+        </div>
+        <button class="btn btn-ghost" onclick="loadPage('search-page')">🔍 Search City</button>
+      </div>
+
+      <div class="card-grid">
+
+        <!-- Manual coordinate entry -->
+        <div class="form-card">
+          <h2 class="card-title">📐 Enter Coordinates</h2>
+
+          <div style="margin-bottom:14px;">
+            <label for="input-dest-name">Label (optional)</label>
+            <input type="text"   id="input-dest-name" placeholder="e.g. Home, Office, Client Site" />
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label for="input-dest-lat">Latitude</label>
+            <input type="number" id="input-dest-lat"  placeholder="e.g. 6.5244"
+                   step="0.000001" min="-90" max="90" />
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <label for="input-dest-lon">Longitude</label>
+            <input type="number" id="input-dest-lon"  placeholder="e.g. 3.3792"
+                   step="0.000001" min="-180" max="180" />
+          </div>
+
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" id="btn-set-dest" style="flex:1;">✓ Set Destination</button>
+            <button class="btn btn-ghost"   id="btn-clear-dest">✕ Clear</button>
+          </div>
+        </div>
+
+        <!-- Current destination status -->
+        <div class="form-card">
+          <h2 class="card-title">📌 Current Destination</h2>
+
+          <div id="dest-current-card" class="dest-card" style="margin-bottom:16px;">
+            <div id="dest-current-name"   class="dest-card-name">None set</div>
+            <div id="dest-current-coords" class="dest-card-coords"></div>
+          </div>
+
+          <p class="hint">
+            Set a destination above or use <strong>Search</strong> to find a city.
+            Once set, the compass will show bearing and distance in real time.
+          </p>
+
+          <div style="margin-top:16px;">
+            <button class="btn btn-outline" onclick="loadPage('compass-page')" style="width:100%;">
+              🧭 Go to Compass
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick presets -->
+        <div class="form-card">
+          <h2 class="card-title">⚡ Quick Presets</h2>
+          <p class="hint" style="margin-bottom:12px;">Tap a city to set it as your destination instantly.</p>
+
+          <div class="preset-grid">
+            <button class="preset-btn"
+                    data-lat="6.5244"  data-lon="3.3792"  data-name="Lagos">
+              🏙 Lagos
+            </button>
+            <button class="preset-btn"
+                    data-lat="9.0579"  data-lon="7.4951"  data-name="Abuja">
+              🏛 Abuja
+            </button>
+            <button class="preset-btn"
+                    data-lat="4.8156"  data-lon="7.0498"  data-name="Port Harcourt">
+              ⚓ Port Harcourt
+            </button>
+            <button class="preset-btn"
+                    data-lat="7.3775"  data-lon="3.9470"  data-name="Ibadan">
+              🌿 Ibadan
+            </button>
+            <button class="preset-btn"
+                    data-lat="11.8469" data-lon="13.1571" data-name="Maiduguri">
+              🌅 Maiduguri
+            </button>
+            <button class="preset-btn"
+                    data-lat="5.8520"  data-lon="5.6937"  data-name="Warri">
+              🛢 Warri
+            </button>
+            <button class="preset-btn"
+                    data-lat="10.5105" data-lon="7.4165"  data-name="Kaduna">
+              🏔 Kaduna
+            </button>
+            <button class="preset-btn"
+                    data-lat="6.3350"  data-lon="5.6257"  data-name="Benin City">
+              🌳 Benin City
+            </button>
+            <button class="preset-btn"
+                    data-lat="51.5074" data-lon="-0.1278" data-name="London">
+              🇬🇧 London
+            </button>
+            <button class="preset-btn"
+                    data-lat="40.7128" data-lon="-74.0060" data-name="New York">
+              🗽 New York
+            </button>
+            <button class="preset-btn"
+                    data-lat="35.6762" data-lon="139.6503" data-name="Tokyo">
+              🏯 Tokyo
+            </button>
+            <button class="preset-btn"
+                    data-lat="21.4225" data-lon="39.8262"  data-name="Mecca">
+              🕌 Mecca
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── SEARCH PAGE ───────────────────────────────────────────── -->
+  <section id="search-page" class="page">
+    <div class="page-content">
+
+      <div class="page-header">
+        <div>
+          <h1>Search</h1>
+          <p class="sub">Find any city or place on Earth</p>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-bottom:20px;">
+        <h2 class="card-title">🔍 Search for a Location</h2>
+
+        <div class="search-bar">
+          <input type="text" id="input-search"
+                 placeholder="Enter city, landmark, or address…"
+                 autocomplete="off" autocorrect="off" />
+          <button class="btn btn-primary" id="btn-search">Search</button>
+        </div>
+
+        <div id="search-status" class="search-status">Enter a location above to begin</div>
+      </div>
+
+      <!-- Results list populated by Compass.searchLocation() -->
+      <div id="search-results-list" class="result-list">
+        <p style="color:var(--muted);font-size:.82rem;text-align:center;padding:2rem 0;">
+          No results yet — search for any city or place to see results with a map preview.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+
+
+  <!-- ── SPEED PAGE ─────────────────────────────────────────── -->
+  <section id="speed-page" class="page">
+    <div class="page-content" style="max-width:480px;">
+
+      <div class="page-header">
+        <div>
+          <h1>Speedometer</h1>
+          <p class="sub">Real-time GPS speed</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-unit-toggle"
+                onclick="Speedometer.toggleUnit()">Switch to mph</button>
+      </div>
+
+      <!-- Analog dial -->
+      <div style="width:100%;max-width:300px;aspect-ratio:1;margin:0 auto 20px;">
+        <div id="speed-dial-container" style="width:100%;height:100%;"></div>
+      </div>
+
+      <!-- Current speed readout -->
+      <div class="heading-readout" style="margin-bottom:16px;text-align:center;">
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;">
+          <span id="spd-current" class="heading-deg">0.0</span>
+          <span id="spd-current-unit"
+                style="font-family:var(--font-mono);font-size:.9rem;
+                       letter-spacing:.1em;color:var(--muted);">km/h</span>
+        </div>
+        <div class="heading-cardinal">Current Speed</div>
+      </div>
+
+      <!-- Stats grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+
+        <div class="form-card" style="padding:14px;text-align:center;">
+          <div class="dest-label" style="margin-bottom:6px;">Average Speed</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;">
+            <span id="spd-avg"
+                  style="font-family:var(--font-display);font-size:1.6rem;
+                         font-weight:700;color:var(--text);">0.0</span>
+            <span id="spd-avg-unit"
+                  style="font-family:var(--font-mono);font-size:.7rem;
+                         color:var(--muted);">km/h</span>
+          </div>
+        </div>
+
+        <div class="form-card" style="padding:14px;text-align:center;">
+          <div class="dest-label" style="margin-bottom:6px;">Max Speed</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;">
+            <span id="spd-max"
+                  style="font-family:var(--font-display);font-size:1.6rem;
+                         font-weight:700;color:var(--text);">0.0</span>
+            <span id="spd-max-unit"
+                  style="font-family:var(--font-mono);font-size:.7rem;
+                         color:var(--muted);">km/h</span>
+          </div>
+        </div>
+
+        <div class="form-card" style="padding:14px;text-align:center;">
+          <div class="dest-label" style="margin-bottom:6px;">Trip Meter</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;">
+            <span id="spd-trip"
+                  style="font-family:var(--font-display);font-size:1.6rem;
+                         font-weight:700;color:var(--text);">0.00</span>
+            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">km</span>
+          </div>
+        </div>
+
+        <div class="form-card" style="padding:14px;text-align:center;">
+          <div class="dest-label" style="margin-bottom:6px;">Odometer</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;">
+            <span id="spd-odo"
+                  style="font-family:var(--font-display);font-size:1.6rem;
+                         font-weight:700;color:var(--text);">0.00</span>
+            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">km</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- GPS status + reset -->
+      <div class="gps-strip" style="margin-bottom:12px;">
+        <div id="spd-gps-dot" class="gps-dot"></div>
+        <span id="spd-status">Initialising GPS…</span>
+      </div>
+
+      <button class="btn btn-ghost" style="width:100%;"
+              onclick="Speedometer.reset(); UI.toast('Trip reset', 'ok');">
+        ↺ Reset Trip
+      </button>
+
+    </div>
+  </section>
+
+  <!-- ── ABOUT PAGE ────────────────────────────────────────────── -->
+  <section id="about-page" class="page">
+    <div class="page-content">
+
+      <div class="page-header">
+        <div>
+          <h1>About</h1>
+          <p class="sub">Gnoke GeoCompass · v1.0</p>
+        </div>
+        <button class="btn btn-ghost" id="btn-check-update">🔄 Check for Updates</button>
+      </div>
+
+      <div class="card-grid">
+
+        <div class="form-card">
+          <h2 class="card-title">🧭 Gnoke GeoCompass</h2>
+          <p class="hint">
+            A GPS-powered compass that calculates bearing and distance to any destination
+            on Earth. Search cities, enter coordinates manually, or pick from presets.<br /><br />
+            Point your device toward your destination and navigate with confidence.
+            Your data never leaves the device.
+          </p>
+        </div>
+
+        <div class="form-card">
+          <h2 class="card-title">⚙️ Under The Hood</h2>
+          <table class="about-table">
+            <tbody id="about-tech-table"></tbody>
+          </table>
+        </div>
+
+        <div class="form-card">
+          <h2 class="card-title">📖 How to Use</h2>
+          <p class="hint" style="margin-bottom:10px;">
+            <strong>1. Enable Compass</strong> — tap the Enable button to start device orientation tracking (required for live heading).
+          </p>
+          <p class="hint" style="margin-bottom:10px;">
+            <strong>2. Set Destination</strong> — use Navigate → coordinates, a preset city, or Search to find any place on Earth.
+          </p>
+          <p class="hint" style="margin-bottom:10px;">
+            <strong>3. Navigate</strong> — the compass shows your current heading, and the gold arrow + readout shows bearing and distance to your destination.
+          </p>
+          <p class="hint">
+            <strong>Tip:</strong> Works best outdoors with a clear view of the sky for GPS accuracy.
+          </p>
+        </div>
+
+        <div class="form-card">
+          <h2 class="card-title">👤 Author</h2>
+          <p class="hint">
+            <strong>Edmund Sparrow</strong><br />
+            Part of the <strong>Gnoke Suite</strong> — offline-first tools
+            for developers, retailers, and independent builders.
+          </p>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+            <a class="btn btn-outline" href="/cdn-cgi/l/email-protection#93f6f7fee6fdf7e0e3f2e1e1fce4d3f4fef2faffbdf0fcfe">✉ Email</a>
+            <a class="btn btn-outline" href="https://github.com/edmundsparrow" target="_blank" rel="noopener">⌥ GitHub</a>
+            <a class="btn btn-outline" href="https://selar.com/showlove/edmundsparrow" target="_blank" rel="noopener">❤️ Support</a>
+          </div>
+        </div>
+
+        <div class="form-card" id="update-card">
+          <h2 class="card-title">🔄 Updates</h2>
+          <p class="hint">
+            Running <strong>v1.0</strong>.
+            Click "Check for Updates" above to compare against the latest GitHub release.
+          </p>
+        </div>
+
+        <div class="form-card">
+          <h2 class="card-title">📜 License</h2>
+          <p class="hint">
+            Free and open source under the
+            <strong>GNU General Public License v3.0</strong>.<br /><br />
+            Use it, modify it, share it — but keep it open.
+            Commercial use requires explicit permission from the author.
+          </p>
+          <p class="hint" style="margin-top:10px;font-family:var(--font-mono);font-size:0.68rem;color:var(--muted)">
+            © 2026 Edmund Sparrow — Gnoke Suite
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+
+<!-- Toast -->
+<div id="toast"></div>
+
+
+<!-- ════════════════════════════════════════
+     MOBILE DRAWER
+     ════════════════════════════════════════ -->
+<div id="drawer-overlay" onclick="Drawer.close()"></div>
+
+<nav id="drawer" aria-label="Mobile navigation">
+  <div id="drawer-header">
+    <div id="drawer-brand">
+      <span id="drawer-gnoke">Gnoke</span>
+      <span id="drawer-app">GeoCompass</span>
+    </div>
+    <button id="drawer-close" onclick="Drawer.close()" title="Close">✕</button>
+  </div>
+
+  <div class="drawer-section">Navigate</div>
+  <button class="drawer-btn" onclick="loadPage('compass-page');  Drawer.close();">🧭 Compass</button>
+  <button class="drawer-btn" onclick="loadPage('navigate-page'); Drawer.close();">📍 Set Destination</button>
+  <button class="drawer-btn" onclick="loadPage('search-page');   Drawer.close();">🔍 Search City</button>
+
+  <div class="drawer-section">More</div>
+  <button class="drawer-btn" onclick="loadPage('speed-page'); Drawer.close();">🚗 Speedometer</button>
+  <button class="drawer-btn" onclick="loadPage('about-page'); Drawer.close();">About GeoCompass</button>
+</nav>
+
+
+<!-- ════════════════════════════════════════
+     SCRIPTS — mandatory load order
+     TYPE C: no database, no db-core.js
+     ════════════════════════════════════════ -->
+<script src="../js/state.js"></script>
+<script src="../js/theme.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/geo-compass.js"></script>
+<script src="../js/speed.js"></script>
+<script src="../js/update.js"></script>
+<script src="../js/app.js"></script>
+
+</body>
+</html>
